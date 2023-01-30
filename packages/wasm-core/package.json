@@ -1,0 +1,12 @@
+{
+    "name": "@mono/wasm-core",
+    "private": true,
+    "files": [
+        "pkg"
+    ],
+    "main": "pkg/wasm_core.js",
+    "scripts": {
+        "dev": "cargo-watch -i .gitignore -i \"pkg/*\" -s \"yarn build\"",
+        "build": "wasm-pack build --target web"
+    }
+}

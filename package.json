@@ -1,0 +1,17 @@
+{
+  "name": "@mono/root",
+  "packageManager": "yarn@3.3.1",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"yarn workspace @mono/wasm-core run dev\" \"yarn workspace @mono/web run dev\"",
+    "build": "yarn workspaces foreach run build",
+    "setup-editor": "yarn dlx @yarnpkg/sdks"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0",
+    "typescript": "^4.9.4"
+  }
+}
