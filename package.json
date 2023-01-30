@@ -7,8 +7,7 @@
   ],
   "scripts": {
     "dev:web": "concurrently \"yarn workspace @mono/wasm-core run dev\" \"yarn workspace @mono/web run dev\"",
-    "build:web": "yarn workspaces foreach run build",
-    "setup-workspace": "yarn && yarn dlx @yarnpkg/sdks"
+    "build:web": "yarn workspaces foreach run build"
   },
   "devDependencies": {
     "concurrently": "^7.6.0",

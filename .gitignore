@@ -1,7 +1,9 @@
+build/
+node_modules/
+coverage/
+
+# Yarn berry with node modules linker
 .yarn/*
-!.yarn/cache
-!.yarn/patches
-!.yarn/plugins
 !.yarn/releases
-!.yarn/sdks
-!.yarn/versions
+!.yarn/plugins
+.pnp.*

@@ -1,10 +1,9 @@
 import "./app.css";
 import App from "./App.svelte";
-import init, { greet } from "@mono/wasm-core";
+import init, { init_debug } from "@mono/wasm-core";
 
 init().then(() => {
-  console.log("wasm loaded!");
-  greet();
+  init_debug();
 });
 
 const app = new App({
