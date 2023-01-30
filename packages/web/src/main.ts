@@ -1,9 +1,10 @@
 import "./app.css";
 import App from "./App.svelte";
-import init, { init_debug } from "@mono/wasm-core";
+import init, { BoardState, Piece } from "@mono/wasm-core";
 
 init().then(() => {
-  init_debug();
+  const state = BoardState.from_fen("");
+  console.log(state);
 });
 
 const app = new App({

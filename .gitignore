@@ -2,7 +2,6 @@ build/
 node_modules/
 coverage/
 
-# Yarn berry with node modules linker
 .yarn/*
 !.yarn/releases
 !.yarn/plugins

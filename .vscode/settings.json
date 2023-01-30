@@ -1,0 +1,5 @@
+{
+  "rust-analyzer.linkedProjects": [
+    "${workspaceFolder}/packages/wasm-core/Cargo.toml"
+  ]
+}
