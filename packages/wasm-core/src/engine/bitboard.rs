@@ -1,87 +1,90 @@
-use regex::Regex;
-
 use crate::engine::constants::{Color, Piece};
+
+use super::bit::Bit;
 
 #[derive(Copy, Clone)]
 pub struct BitBoard {
-    pub sides: [u64; 2],
     pub pieces: [[u64; 6]; 2],
 }
 
+pub struct MoveTable;
+
+impl MoveTable {
+    pub const KNIGHT_MOVES: [u64; 64] = Self::generate_knight_moves();
+
+    // https://www.chessprogramming.org/Knight_Pattern
+    pub const fn generate_knight_moves() -> [u64; 64] {
+        let mut i = 0;
+        let mut moves = [0; 64];
+
+        while i < 64 {
+            let b = 1_u64 << i;
+
+            // Top-Left
+            moves[i] |= (b & !(BitBoard::FILE_H)) << 17;
+            moves[i] |= (b & !(BitBoard::FILE_G | BitBoard::FILE_H)) << 10;
+
+            // Bottom-Left
+            moves[i] |= (b & !(BitBoard::FILE_G | BitBoard::FILE_H)) >> 6;
+            moves[i] |= (b & !(BitBoard::FILE_H)) >> 15;
+
+            // Top-Right
+            moves[i] |= (b & !(BitBoard::FILE_A)) << 15;
+            moves[i] |= (b & !(BitBoard::FILE_A | BitBoard::FILE_B)) << 6;
+
+            // Bottom-Right
+            moves[i] |= (b & !(BitBoard::FILE_A | BitBoard::FILE_A)) >> 10;
+            moves[i] |= (b & !(BitBoard::FILE_A)) >> 17;
+
+            i += 1;
+        }
+
+        moves
+    }
+}
+
+// Little-Endian Rank-File Mapping
 impl BitBoard {
-    const FEN_RANK_REGEX: &'static str = r"([prnbqkbnrPRNBQKBNR1-8]{1,8})/?";
+    pub const FILE_A: u64 = 0x0101010101010101;
+    pub const FILE_B: u64 = Self::FILE_A << 1;
+    pub const FILE_C: u64 = Self::FILE_A << 2;
+    pub const FILE_D: u64 = Self::FILE_A << 3;
+    pub const FILE_E: u64 = Self::FILE_A << 4;
+    pub const FILE_F: u64 = Self::FILE_A << 5;
+    pub const FILE_G: u64 = Self::FILE_A << 6;
+    pub const FILE_H: u64 = Self::FILE_A << 7;
+
+    pub const RANK_1: u64 = 0x00000000000000FF;
+    pub const RANK_2: u64 = Self::RANK_1 << 8;
+    pub const RANK_3: u64 = Self::RANK_1 << 16;
+    pub const RANK_4: u64 = Self::RANK_1 << 24;
+    pub const RANK_5: u64 = Self::RANK_1 << 32;
+    pub const RANK_6: u64 = Self::RANK_1 << 40;
+    pub const RANK_7: u64 = Self::RANK_1 << 48;
+    pub const RANK_8: u64 = Self::RANK_1 << 56;
+
+    pub const DIAGONAL: u64 = 0x8040201008040201; // A1-H8
+    pub const ANTI_DIAGONAL: u64 = 0x0102040810204080; // H1-A8
+
+    pub const LIGHT_SQUARES: u64 = 0x55AA55AA55AA55AA;
+    pub const DARK_SQUARES: u64 = 0xAA55AA55AA55AA55;
 
     pub fn empty() -> Self {
         Self {
-            sides: [0; 2],
             pieces: [[0; 6]; 2],
         }
     }
 
-    pub fn from_fen_ranks(fen_ranks: Option<&str>) -> Result<BitBoard, &'static str> {
-        let mut bitboard = BitBoard::empty();
-        let pattern = format!("^{}$", Self::FEN_RANK_REGEX.repeat(8));
-        let ranks = fen_ranks.ok_or("FenParser: Incomplete FEN provided.")?;
-        let regex = match Regex::new(pattern.as_str()) {
-            Ok(regex) => regex,
-            Err(_) => return Err("FenParser: An error occured while creating RankPattern Regex."),
-        };
-        let captures = regex
-            .captures(ranks)
-            .ok_or("FenParser: An errror occured while parsing ranks.")?;
-
-        for rank in 0..=7 {
-            let capture = captures.get(rank + 1);
-            let fen_rank = capture.unwrap().as_str();
-            bitboard.set_pieces_from_fen_rank(rank, fen_rank);
-        }
-
-        Ok(bitboard)
-    }
-
-    pub fn set_pieces_from_fen_rank(&mut self, rank: usize, fen_rank: &str) {
-        let mut file = 0;
-
-        for character in fen_rank.chars() {
-            let color = if char::is_ascii_uppercase(&character) {
-                Color::WHITE
-            } else {
-                Color::BLACK
-            };
-
-            let piece: Option<usize> = match character {
-                'p' | 'P' => Some(Piece::PAWN),
-                'n' | 'N' => Some(Piece::KNIGHT),
-                'b' | 'B' => Some(Piece::BISHOP),
-                'r' | 'R' => Some(Piece::ROOK),
-                'q' | 'Q' => Some(Piece::QUEEN),
-                'k' | 'K' => Some(Piece::KING),
-                '1'..='8' | _ => None,
-            };
-
-            match piece {
-                Some(piece) => self.set_piece(color, piece, rank, file),
-                None => file += char::to_digit(character, 10).unwrap() as usize,
-            }
-
-            if char::is_alphabetic(character) {
-                file += 1;
-            }
-        }
-    }
-
     pub fn set_piece(&mut self, color: usize, piece: usize, rank: usize, file: usize) {
-        let mask = (1 << ((7 - rank) * 8)) << (7 - file);
-        self.sides[color] |= mask;
-        self.pieces[color][piece] |= mask;
+        Bit::set(&mut self.pieces[color][piece], (8 * rank + file) as u64);
     }
 
     pub fn get_piece(&self, rank: usize, file: usize) -> Option<(usize, usize)> {
-        let mask = 63 - rank * 8 - file;
+        let index = (8 * rank + file) as u64;
 
         for color in 0..=1 {
             for piece in 0..=5 {
-                if ((self.pieces[color][piece] >> mask) & 1) == 1 {
+                if Bit::get(self.pieces[color][piece], index) == 1 {
                     return Some((color, piece));
                 }
             }
@@ -93,7 +96,7 @@ impl BitBoard {
     pub fn print(&self) {
         for rank in 0..=7 {
             for file in 0..=7 {
-                let symbol = match self.get_piece(rank, file) {
+                let symbol = match self.get_piece(7 - rank, file) {
                     Some(color_piece) => match color_piece {
                         (Color::BLACK, Piece::PAWN) => "p",
                         (Color::BLACK, Piece::KNIGHT) => "n",
@@ -116,5 +119,20 @@ impl BitBoard {
             }
             println!();
         }
+    }
+}
+
+pub fn print_bitboard(board: u64) {
+    for rank in 0..=7 {
+        for file in 0..=7 {
+            let symbol = match Bit::get(board, (8 * (7 - rank) + file) as u64) {
+                0 => ".",
+                1 => "1",
+                _ => "?",
+            };
+
+            print!(" {} ", symbol);
+        }
+        println!();
     }
 }
